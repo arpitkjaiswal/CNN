@@ -188,6 +188,10 @@ const verifyCode = async(req,res,next) =>{
       });
     }
 
+    if (user.accountStatus !== 'active') {
+      return res.status(403).json({ error: 'Account is not active. Sign in to reactivate it.' });
+    }
+
     //verify otp
     const isValid = user.verifyCode(code);
     if(!isValid){

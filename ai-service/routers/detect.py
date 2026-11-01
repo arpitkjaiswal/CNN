@@ -44,6 +44,8 @@ def detect_leaves(
 
         # Use the detector initialized by the application.
         detector = request.app.state.detector
+        if detector is None:
+            raise HTTPException(status_code=503, detail="Leaf detection is not configured. Set ROBOFLOW_API_KEY and workflow settings.")
         result = detector.detect(image_bytes)
 
         if not isinstance(result, dict):

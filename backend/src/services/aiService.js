@@ -22,7 +22,7 @@ const checkHealth = async () => {
  * @returns {{ leaf_count: number, boxes: number[][] }}
  */
 const detectLeaves = async (imageBuffer, filename, contentType) => {
-  const FormData = (await import('form-data')).default;
+  const FormData = require('form-data');
   const form = new FormData();
   form.append('file', imageBuffer, { filename, contentType });
 
@@ -40,7 +40,7 @@ const detectLeaves = async (imageBuffer, filename, contentType) => {
  * @returns {{ species: string, confidence: number }}
  */
 const classifyLeaf = async (croppedBuffer) => {
-  const FormData = (await import('form-data')).default;
+  const FormData = require('form-data');
   const form = new FormData();
   form.append('file', croppedBuffer, {
     filename: 'cropped_leaf.jpg',

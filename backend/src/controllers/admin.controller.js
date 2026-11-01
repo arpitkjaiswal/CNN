@@ -12,7 +12,7 @@ const getUsers = async (req, res, next) => {
 
     const [users, total, predictionStats] = await Promise.all([
       User.find()
-        .select('-passwordHash -verificationCode -verificationCodeExpires')
+        .select('-passwordHash -verificationCode -verificationCodeExpires -verificationPurpose -resetPasswordToken -resetPasswordExpires')
         .sort({ registrationDate: -1 })
         .skip(skip)
         .limit(limit)

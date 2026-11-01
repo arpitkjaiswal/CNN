@@ -1,30 +1,18 @@
-# AI Service Model Weights
+# Classifier checkpoint
 
-Place your trained model weights in this directory:
+`leaf_classifier.pth` is the MobileNetV2 checkpoint consumed by `services/classifier.py`.
+The bundled legacy file is a raw state dictionary with five output classes in documented
+alphabetical order: Guava, Lemon, Lychee, Mango, Olive. New checkpoints from `train.py`
+include explicit labels and architecture metadata; both formats are supported.
+Inference uses the same resize, center crop, and ImageNet normalization as `train.py`.
+No pretrained weight download or random prediction fallback is used at startup.
 
-## Required Files
+Train a replacement from `ai-service` with:
 
-### 1. YOLOv8 Leaf Detector
-- **Filename**: `yolov8n.pt` (or custom fine-tuned weights)
-- **Source**: Download pretrained from [Ultralytics](https://github.com/ultralytics/ultralytics) or fine-tune on a leaf dataset
-- **If missing**: The service will auto-download the default YOLOv8 nano weights (generic object detection, not leaf-specific)
-
-### 2. CNN Leaf Classifier
-- **Filename**: `leaf_classifier.pth`
-- **Architecture**: MobileNetV2 with 5-class output head
-- **Training**: See the training pipeline documentation
-- **If missing**: The service runs in DEMO MODE with random weights (predictions are meaningless)
-
-## Training the Classifier
-
-```bash
-# From the ai-service directory:
-python train.py --data_dir /path/to/leaf_dataset --epochs 50 --batch_size 32
+```sh
+python train.py --dataset /path/to/dataset --epochs 10 --batch-size 32
 ```
 
-## Species Labels (Alphabetical PyTorch ImageFolder order)
-1. Guava
-2. Lemon
-3. Lychee
-4. Mango
-5. Olive
+This overwrites the bundled checkpoint when validation improves. Back it up first.
+The dataset and an independently verified accuracy report are not included.
+Detection uses a configured remote Roboflow workflow, not the generic YOLO files.

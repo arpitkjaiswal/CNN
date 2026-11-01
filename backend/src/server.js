@@ -117,6 +117,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not configured.');
     await connectDB();
     app.listen(PORT, () => {
       console.log(`Backend server running on port ${PORT}`);
@@ -127,6 +128,6 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (require.main === module) startServer();
 
 module.exports = app;

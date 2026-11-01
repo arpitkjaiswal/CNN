@@ -21,6 +21,15 @@ const transporter = nodemailer.createTransport({
  * 3. Falls back to Nodemailer SMTP for local development
  */
 const sendEmail = async ({ to, subject, text, html }) => {
+  if (process.env.MAIL_MODE === 'local' && process.env.NODE_ENV !== 'production') {
+    const fs = require('node:fs/promises');
+    const path = require('node:path');
+    const directory = process.env.MAIL_OUTBOX_DIR || path.resolve('.local/mail');
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.writeFile(path.join(directory, `${Date.now()}-${require('node:crypto').randomUUID()}.json`),
+      JSON.stringify({ to, subject, text }, null, 2), { mode: 0o600 });
+    return;
+  }
   // Option 1: Resend HTTP API (Port 443 — Render Free Tier never blocks this)
   if (process.env.RESEND_API_KEY) {
     const res = await fetch('https://api.resend.com/emails', {
@@ -81,7 +90,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
     });
   }
 
-  console.warn(`[MAILER] No email service configured. Set RESEND_API_KEY, BREVO_API_KEY, or SMTP credentials.`);
+  throw new Error('No email service configured. Configure a provider or MAIL_MODE=local for development.');
 };
 
 const sendVerificationEmail = async (toEmail, code) => {
@@ -119,7 +128,6 @@ const sendVerificationEmail = async (toEmail, code) => {
     });
   } catch (error) {
     console.error(`[MAILER ERROR] Failed to send verification email to ${toEmail}:`, error.message);
-    console.log(`[MAILER FALLBACK OTP] Code for ${toEmail}: ${code}`);
   }
 };
 
@@ -133,7 +141,6 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
     });
   } catch (error) {
     console.error(`[MAILER ERROR] Failed to send password reset email to ${toEmail}:`, error.message);
-    console.log(`[MAILER FALLBACK RESET URL] Link for ${toEmail}: ${resetUrl}`);
   }
 };
 

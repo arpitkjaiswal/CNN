@@ -34,7 +34,7 @@ const predict = async (req, res, next) => {
     const metadata = await sharp(imageBuffer).metadata();
 
     // Step 3: Send to AI service /detect — F.4
-    const FormData = (await import('form-data')).default;
+    const FormData = require('form-data');
     const detectForm = new FormData();
     detectForm.append('file', imageBuffer, {
       filename: 'normalized_leaf.jpg',
@@ -54,72 +54,38 @@ const predict = async (req, res, next) => {
         });
       }
 
-      console.warn('AI detection microservice unreachable (' + aiError.message + '). Using fallback detection.');
-      const imgW = metadata.width || 640;
-      const imgH = metadata.height || 640;
-
-      // Computer vision cluster check for fallback mode
-      let fallbackLeafCount = 1;
-      try {
-        const { data, info } = await sharp(imageBuffer).raw().toBuffer({ resolveWithObject: true });
-        let leftCluster = 0;
-        let rightCluster = 0;
-        let centerCount = 0;
-        for (let y = 0; y < info.height; y += 4) {
-          for (let x = 0; x < info.width; x += 4) {
-            const idx = (y * info.width + x) * info.channels;
-            const r = data[idx];
-            const g = data[idx + 1];
-            const b = data[idx + 2];
-            if ((2 * g - r - b > 20) && g > 35) {
-              if (x < info.width * 0.4) leftCluster++;
-              else if (x > info.width * 0.6) rightCluster++;
-              else centerCount++;
-            }
-          }
-        }
-        if (leftCluster > 400 && rightCluster > 400 && centerCount < 40) {
-          fallbackLeafCount = 2; // Two distinct disconnected leaves
-        }
-      } catch (err) {
-        console.warn('Fallback cluster analysis skipped:', err.message);
-      }
-
-      detectResponse = {
-        data: {
-          leaf_count: fallbackLeafCount,
-          boxes: [[Math.round(imgW * 0.08), Math.round(imgH * 0.08), Math.round(imgW * 0.92), Math.round(imgH * 0.92)]],
-        },
-      };
+      return res.status(503).json({ error: 'Leaf detection is unavailable. Please try again later.' });
     }
 
-    const { leaf_count } = detectResponse.data;
-    let { boxes } = detectResponse.data;
-    const detectionFallback = leaf_count === 0;
-
-    if (detectionFallback) {
-      boxes = [[0, 0, metadata.width, metadata.height]];
-      console.warn('No leaf box returned; classifying the full image.');
-    }
-
-    if (leaf_count > 1) {
+    const { leaf_count, boxes } = detectResponse.data;
+    if (leaf_count !== 1) {
       return res.status(422).json({
-        error: `Only one leaf image should be uploaded. Multiple leaves were detected in this image (${leaf_count}).`,
+        error: leaf_count === 0 ? 'No leaf detected. Upload a clear photo of one leaf.'
+          : `Only one leaf image should be uploaded. Detected ${leaf_count} leaves.`,
         leafCount: leaf_count,
       });
+    }
+    if (!Array.isArray(boxes) || boxes.length !== 1 || boxes[0].length !== 4 ||
+        !boxes[0].every(Number.isFinite)) {
+      return res.status(502).json({ error: 'Invalid detection result from AI service.' });
     }
 
     // Step 5: Crop to the single detected bounding box
     const [x1, y1, x2, y2] = boxes[0];
-    const cropWidth = Math.max(1, Math.round(x2 - x1));
-    const cropHeight = Math.max(1, Math.round(y2 - y1));
+    const left = Math.max(0, Math.min(metadata.width, Math.floor(x1)));
+    const top = Math.max(0, Math.min(metadata.height, Math.floor(y1)));
+    const cropWidth = Math.min(metadata.width, Math.ceil(x2)) - left;
+    const cropHeight = Math.min(metadata.height, Math.ceil(y2)) - top;
+    if (cropWidth <= 0 || cropHeight <= 0) {
+      return res.status(502).json({ error: 'Invalid leaf bounding box from AI service.' });
+    }
 
     let croppedBuffer;
     try {
       croppedBuffer = await sharp(imageBuffer)
         .extract({
-          left: Math.max(0, Math.round(x1)),
-          top: Math.max(0, Math.round(y1)),
+          left,
+          top,
           width: cropWidth,
           height: cropHeight,
         })
@@ -143,27 +109,14 @@ const predict = async (req, res, next) => {
         timeout: 12000,
       });
     } catch (aiError) {
-      console.warn('AI classification microservice unreachable (' + aiError.message + '). Using fallback classification.');
-      const name = (req.file.originalname || '').toLowerCase();
-      let detectedSpecies = 'Mango';
-      if (name.includes('guava')) detectedSpecies = 'Guava';
-      else if (name.includes('lemon')) detectedSpecies = 'Lemon';
-      else if (name.includes('lychee')) detectedSpecies = 'Lychee';
-      else if (name.includes('olive')) detectedSpecies = 'Olive';
-      else {
-        const speciesList = ['Guava', 'Lemon', 'Lychee', 'Mango', 'Olive'];
-        const hash = imageBuffer.length % speciesList.length;
-        detectedSpecies = speciesList[hash];
-      }
-      classifyResponse = {
-        data: {
-          species: detectedSpecies,
-          confidence: Number((0.91 + (Math.random() * 0.07)).toFixed(2)),
-        },
-      };
+      return res.status(503).json({ error: 'Leaf classification is unavailable. Please try again later.' });
     }
 
     const { species, confidence } = classifyResponse.data;
+    if (!['Guava', 'Lemon', 'Lychee', 'Mango', 'Olive'].includes(species) ||
+        !Number.isFinite(confidence) || confidence < 0 || confidence > 100) {
+      return res.status(502).json({ error: 'Invalid classification result from AI service.' });
+    }
 
     // Step 7: Generate compressed thumbnail (150×150), discard full-res — F.8
     const thumbnailBuffer = await sharp(imageBuffer)
@@ -195,7 +148,7 @@ const predict = async (req, res, next) => {
         species: prediction.species,
         confidence: prediction.confidenceScore,
         timestamp: prediction.timestamp,
-        detectionFallback,
+
       },
     });
   } catch (error) {

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 CONF = float(os.getenv("DETECTION_CONF", "0.25"))
 
 # Set to "1" in .env to log the raw workflow output while debugging
-DEBUG_RAW = os.getenv("DETECTOR_DEBUG_RAW", "1") == "1"
+DEBUG_RAW = os.getenv("DETECTOR_DEBUG_RAW", "0") == "1"
 
 
 class LeafDetector:

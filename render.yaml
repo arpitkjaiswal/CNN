@@ -1,0 +1,80 @@
+# Render Blueprint: https://dashboard.render.com/select-repo?type=blueprint
+# The AI standard instance is a paid plan. Review Render's current pricing.
+# Supply sync:false values securely during the first Blueprint deployment.
+services:
+  - type: web
+    name: leafscan-ai
+    runtime: docker
+    plan: standard
+    region: frankfurt
+    rootDir: ai-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: OMP_NUM_THREADS
+        value: "2"
+      - key: DETECTION_CONF
+        value: "0.25"
+      - key: DETECTOR_DEBUG_RAW
+        value: "0"
+      - key: ROBOFLOW_API_KEY
+        sync: false
+      - key: ROBOFLOW_WORKSPACE
+        sync: false
+      - key: ROBOFLOW_WORKFLOW_ID
+        sync: false
+
+  - type: web
+    name: leafscan-backend
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: MONGODB_URI
+        sync: false
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: leafscan-ai
+          envVarKey: RENDER_EXTERNAL_URL
+      # Enter the frontend's public URL after its first deployment.
+      - key: FRONTEND_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+
+  - type: web
+    name: leafscan
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && VITE_API_URL="${VITE_API_ORIGIN}/api" npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: VITE_API_ORIGIN
+        fromService:
+          type: web
+          name: leafscan-backend
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -63,6 +63,9 @@ const resetPasswordSchema = z.object({
   password: registerSchema.shape.password,
 });
 
+const emailSchema = z.object({ email: z.string().trim().toLowerCase().email() });
+const verifyCodeSchema = emailSchema.extend({ code: z.string().regex(/^\d{6}$/, 'Enter a six-digit code') });
+
 // --- Query Schemas ---
 
 const paginationSchema = z.object({
@@ -100,6 +103,8 @@ const validate = (schema, source = 'body') => {
 
 module.exports = {
   registerSchema,
+  emailSchema,
+  verifyCodeSchema,
   loginSchema,
   deactivateSchema,
   reactivateSchema,

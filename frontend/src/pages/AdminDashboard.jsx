@@ -17,7 +17,7 @@ const AdminDashboard = () => {
     try {
       const response = await api.get('/admin/stats');
       setStats(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load stats.');
     }
   };
@@ -28,7 +28,7 @@ const AdminDashboard = () => {
       const response = await api.get(`/admin/users?page=${page}&limit=10`);
       setUsers(response.data.users);
       setUserPagination(response.data.pagination);
-    } catch (err) {
+    } catch {
       setError('Failed to load users.');
     } finally {
       setLoading(false);
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
       const response = await api.get(`/admin/logs?page=${page}&limit=15`);
       setLogs(response.data.logs);
       setLogPagination(response.data.pagination);
-    } catch (err) {
+    } catch {
       setError('Failed to load logs.');
     } finally {
       setLoading(false);

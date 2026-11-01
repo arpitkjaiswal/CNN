@@ -17,6 +17,8 @@ const { requireAuth } = require('../middleware/auth');
 
 const {
   validate,
+  emailSchema,
+  verifyCodeSchema,
   registerSchema,
   loginSchema,
   deactivateSchema,
@@ -75,6 +77,8 @@ router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
 // Verify OTP
 router.post(
   '/verify-code',
+  codeLimiter,
+  validate(verifyCodeSchema),
   verifyCode
 );
 
@@ -82,6 +86,7 @@ router.post(
 // Resend OTP
 router.post(
   '/resend-code',
+  validate(emailSchema),
   resendCode
 );
 

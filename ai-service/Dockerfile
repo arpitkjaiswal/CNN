@@ -1,23 +1,26 @@
+# syntax=docker/dockerfile:1
 FROM python:3.11-slim
 
 WORKDIR /app
 
 # Install system dependencies for OpenCV / image processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
-# Install lightweight CPU-only PyTorch first (avoids Render Free 512MB RAM OOM)
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir -r requirements.txt
+# CPU wheels are pinned in requirements.txt. The optional CA secret supports
+# managed build environments; Render builds use their normal system trust.
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Hugging Face Spaces requires port 7860; Render/cloud platforms inject their own PORT
-ENV PORT=7860
-EXPOSE 7860
+# Render injects PORT; keep a useful default for local containers.
+ENV PORT=8000
+EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

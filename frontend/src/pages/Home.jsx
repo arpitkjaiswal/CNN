@@ -13,7 +13,7 @@ const Home = () => {
     {
       icon: '🔍',
       title: 'AI Detection',
-      description: 'YOLOv8 detects and isolates the leaf from the background automatically.',
+      description: 'A configured Roboflow workflow detects and isolates the leaf from the background.',
     },
     {
       icon: '🧬',
@@ -135,7 +135,7 @@ const Home = () => {
             <div className="home-leaf" />
             <div className="home-scan-line" />
             <div className="home-detection-tag"><span /> MODEL PREVIEW <b>5 SPECIES</b></div>
-            <div className="home-visual-caption"><span>LEAFSCAN / AI</span><strong>Species recognition</strong><small>YOLOv8 detection + CNN classification</small></div>
+            <div className="home-visual-caption"><span>LEAFSCAN / AI</span><strong>Species recognition</strong><small>Roboflow detection + MobileNetV2 classification</small></div>
             <div className="home-coordinate">UPLOAD / DETECT / IDENTIFY</div>
           </div>
         </div>
